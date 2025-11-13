@@ -1,19 +1,16 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 import csv
 import os
 import datetime
 
-
 class Cliente:
     #Clase para representar un cliente
     
-    def __init__(self, id_cliente, nombre, apellido, telefono):
+    def __init__(self, id_cliente, nombre, apellido, email):
         self.id_cliente = id_cliente
         self.nombre = nombre
         self.apellido = apellido
-        self.telefono = telefono
+        self.email = email
     
     def __str__(self):
         return f"{self.nombre} {self.apellido} (ID: {self.id_cliente})"
@@ -47,7 +44,7 @@ class GestorTurnos:
         # Campos para el CSV
         self.campos_csv = [
             "id_turno", "id_cliente", "nombre_cliente", "apellido_cliente", 
-            "telefono_cliente", "servicio", "fecha", "hora", "estado"
+            "email_cliente", "servicio", "fecha", "hora", "estado"
         ]
         
         # Cargar datos si existen
@@ -59,10 +56,10 @@ class GestorTurnos:
                 escritor = csv.DictWriter(f, fieldnames=self.campos_csv)
                 escritor.writeheader()
     
-    def encontrar_cliente_por_telefono(self, telefono):
+    def encontrar_cliente_por_email(self, email):
         indice = 0
         while indice < len(self.clientes):
-            if self.clientes[indice].telefono == telefono:
+            if self.clientes[indice].email == email:
                 return self.clientes[indice]
             indice = indice + 1
         return None
@@ -93,7 +90,7 @@ class GestorTurnos:
                         id_cliente=id_cliente,
                         nombre=row['nombre_cliente'],
                         apellido=row['apellido_cliente'],
-                        telefono=row['telefono_cliente']
+                        email=row['email_cliente']
                     )
                     clientes_dict[id_cliente] = cliente
                     self.clientes.append(cliente)
@@ -148,7 +145,7 @@ class GestorTurnos:
                     'id_cliente': turno.cliente.id_cliente,
                     'nombre_cliente': turno.cliente.nombre,
                     'apellido_cliente': turno.cliente.apellido,
-                    'telefono_cliente': turno.cliente.telefono,
+                    'email_cliente': turno.cliente.email,
                     'servicio': turno.servicio,
                     'fecha': turno.fecha_hora.strftime('%Y-%m-%d'),
                     'hora': turno.fecha_hora.strftime('%H:%M'),
@@ -164,10 +161,10 @@ class GestorTurnos:
         
         nombre = input("Nombre: ").strip()
         apellido = input("Apellido: ").strip()
-        telefono = input("Teléfono: ").strip()
+        email = input("Email: ").strip()
         
         # Verificar si ya existe
-        cliente_existente = self.encontrar_cliente_por_telefono(telefono)
+        cliente_existente = self.encontrar_cliente_por_email(email)
         if cliente_existente:
             print(f"Cliente ya existe: {cliente_existente}")
             return cliente_existente
@@ -177,7 +174,7 @@ class GestorTurnos:
             id_cliente=self.proximo_id_cliente,
             nombre=nombre,
             apellido=apellido,
-            telefono=telefono
+            email=email
         )
         
         self.clientes.append(cliente)
@@ -408,7 +405,7 @@ class GestorTurnos:
     def menu_principal(self):
         while True:
             print("\n" + "="*40)
-            print("SISTEMA DE TURNOS")
+            print("GESTOR DE TURNOS")
             print("="*40)
             print("1. Alta cliente")
             print("2. Solicitar turno")
@@ -447,7 +444,7 @@ class GestorTurnos:
 
 
 def main():
-    print("Sistema de Gestión de Turnos")
+    print("Gestión de Turnos")
     print("-" * 30)
     
     gestor = GestorTurnos()
