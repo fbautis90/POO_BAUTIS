@@ -1,24 +1,23 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 import csv
 import os
 import datetime
 
+
 class Cliente:
-    #Clase para representar un cliente
-    
-    def __init__(self, id_cliente, nombre, apellido, email):
+    def __init__(self, id_cliente, nombre, apellido, telefono):
         self.id_cliente = id_cliente
         self.nombre = nombre
         self.apellido = apellido
-        self.email = email
+        self.telefono = telefono
     
     def __str__(self):
         return f"{self.nombre} {self.apellido} (ID: {self.id_cliente})"
 
 
 class Turno:
-    #Clase para representar un turno
-    
     def __init__(self, id_turno, cliente, servicio, fecha_hora, estado="Pendiente"):
         self.id_turno = id_turno
         self.cliente = cliente
@@ -32,52 +31,30 @@ class Turno:
 
 
 class GestorTurnos:
-    #Clase principal para gestionar turnos y clientes
-    
     def __init__(self):
         self.archivo_csv = "turnos.csv"
-        self.clientes = []
-        self.turnos = []
-        self.proximo_id_cliente = 1
-        self.proximo_id_turno = 1
         
         # Campos para el CSV
         self.campos_csv = [
             "id_turno", "id_cliente", "nombre_cliente", "apellido_cliente", 
-            "email_cliente", "servicio", "fecha", "hora", "estado"
+            "telefono_cliente", "servicio", "fecha", "hora", "estado"
         ]
         
-        # Cargar datos si existen
-        self.cargar_datos()
-    
-    def crear_archivo_si_no_existe(self):
+        # Crear archivo si no existe
         if not os.path.exists(self.archivo_csv):
             with open(self.archivo_csv, 'w', newline='', encoding='utf-8') as f:
                 escritor = csv.DictWriter(f, fieldnames=self.campos_csv)
                 escritor.writeheader()
+            print("Archivo creado")
     
-    def encontrar_cliente_por_email(self, email):
-        indice = 0
-        while indice < len(self.clientes):
-            if self.clientes[indice].email == email:
-                return self.clientes[indice]
-            indice = indice + 1
-        return None
-
-    def cargar_datos(self):
-        self.crear_archivo_si_no_existe()
+    def leer_todos_los_turnos(self):
+        # Lee todos los turnos del CSV y devuelve lista
+        turnos = []
+        clientes_dict = {}
         
-        # Intentar cargar datos
         with open(self.archivo_csv, 'r', encoding='utf-8') as archivo:
             lector = csv.DictReader(archivo)
             datos = list(lector)
-            
-            if len(datos) == 0:
-                print("Sistema iniciado - No hay datos previos")
-                return
-            
-            # Cargar clientes y turnos
-            clientes_dict = {}
             
             indice = 0
             while indice < len(datos):
@@ -90,13 +67,13 @@ class GestorTurnos:
                         id_cliente=id_cliente,
                         nombre=row['nombre_cliente'],
                         apellido=row['apellido_cliente'],
-                        email=row['email_cliente']
+                        telefono=row['telefono_cliente']
                     )
                     clientes_dict[id_cliente] = cliente
-                    self.clientes.append(cliente)
+                else:
+                    cliente = clientes_dict[id_cliente]
                 
                 # Crear turno
-                cliente = clientes_dict[id_cliente]
                 fecha_str = f"{row['fecha']} {row['hora']}"
                 fecha_hora = datetime.datetime.strptime(fecha_str, '%Y-%m-%d %H:%M')
                 
@@ -107,45 +84,26 @@ class GestorTurnos:
                     fecha_hora=fecha_hora,
                     estado=row['estado']
                 )
-                self.turnos.append(turno)
-                
+                turnos.append(turno)
                 indice = indice + 1
-            
-            # Actualizar contadores
-            if len(self.clientes) > 0:
-                max_id = 0
-                i = 0
-                while i < len(self.clientes):
-                    if self.clientes[i].id_cliente > max_id:
-                        max_id = self.clientes[i].id_cliente
-                    i = i + 1
-                self.proximo_id_cliente = max_id + 1
-            
-            if len(self.turnos) > 0:
-                max_id = 0
-                i = 0
-                while i < len(self.turnos):
-                    if self.turnos[i].id_turno > max_id:
-                        max_id = self.turnos[i].id_turno
-                    i = i + 1
-                self.proximo_id_turno = max_id + 1
-            
-            print("Datos cargados exitosamente")
+        
+        return turnos
     
-    def guardar_datos(self):
+    def guardar_todos_los_turnos(self, turnos):
+        # Guarda todos los turnos al CSV (sobrescribe todo)
         with open(self.archivo_csv, 'w', newline='', encoding='utf-8') as archivo:
             escritor = csv.DictWriter(archivo, fieldnames=self.campos_csv)
             escritor.writeheader()
             
             indice = 0
-            while indice < len(self.turnos):
-                turno = self.turnos[indice]
+            while indice < len(turnos):
+                turno = turnos[indice]
                 turno_dict = {
                     'id_turno': turno.id_turno,
                     'id_cliente': turno.cliente.id_cliente,
                     'nombre_cliente': turno.cliente.nombre,
                     'apellido_cliente': turno.cliente.apellido,
-                    'email_cliente': turno.cliente.email,
+                    'telefono_cliente': turno.cliente.telefono,
                     'servicio': turno.servicio,
                     'fecha': turno.fecha_hora.strftime('%Y-%m-%d'),
                     'hora': turno.fecha_hora.strftime('%H:%M'),
@@ -153,154 +111,214 @@ class GestorTurnos:
                 }
                 escritor.writerow(turno_dict)
                 indice = indice + 1
+    
+    def obtener_proximo_id_turno(self):
+        # Lee el CSV y calcula el próximo ID
+        turnos = self.leer_todos_los_turnos()
+        if len(turnos) == 0:
+            return 1
+        
+        max_id = 0
+        indice = 0
+        while indice < len(turnos):
+            if turnos[indice].id_turno > max_id:
+                max_id = turnos[indice].id_turno
+            indice = indice + 1
+        
+        return max_id + 1
+    
+    def obtener_proximo_id_cliente(self):
+        # Lee el CSV y calcula el próximo ID de cliente
+        turnos = self.leer_todos_los_turnos()
+        if len(turnos) == 0:
+            return 1
+        
+        max_id = 0
+        indice = 0
+        while indice < len(turnos):
+            if turnos[indice].cliente.id_cliente > max_id:
+                max_id = turnos[indice].cliente.id_cliente
+            indice = indice + 1
+        
+        return max_id + 1
+    
+    def buscar_cliente_por_telefono(self, telefono):
+        # Busca cliente en el CSV
+        turnos = self.leer_todos_los_turnos()
+        
+        indice = 0
+        while indice < len(turnos):
+            if turnos[indice].cliente.telefono == telefono:
+                return turnos[indice].cliente
+            indice = indice + 1
+        
+        return None
 
     def alta_cliente(self):
-        print("\n" + "="*40)
-        print("ALTA NUEVO CLIENTE")
-        print("="*40)
+        print("\n" + "="*30)
+        print("ALTA CLIENTE")
+        print("="*30)
         
         nombre = input("Nombre: ").strip()
         apellido = input("Apellido: ").strip()
-        email = input("Email: ").strip()
+        telefono = input("Teléfono: ").strip()
         
         # Verificar si ya existe
-        cliente_existente = self.encontrar_cliente_por_email(email)
+        cliente_existente = self.buscar_cliente_por_telefono(telefono)
         if cliente_existente:
             print(f"Cliente ya existe: {cliente_existente}")
             return cliente_existente
         
         # Crear nuevo cliente
+        nuevo_id = self.obtener_proximo_id_cliente()
         cliente = Cliente(
-            id_cliente=self.proximo_id_cliente,
+            id_cliente=nuevo_id,
             nombre=nombre,
             apellido=apellido,
-            email=email
+            telefono=telefono
         )
         
-        self.clientes.append(cliente)
-        self.proximo_id_cliente = self.proximo_id_cliente + 1
-        
-        self.guardar_datos()
         print(f"Cliente creado: {cliente}")
         return cliente
     
     def solicitar_turno(self):
-        print("\n" + "="*40)
+        print("\n" + "="*30)
         print("SOLICITAR TURNO")
-        print("="*40)
+        print("="*30)
         
-        # Seleccionar cliente
-        if len(self.clientes) == 0:
-            print("No hay clientes. Creando nuevo cliente...")
-            cliente = self.alta_cliente()
+        # Obtener cliente
+        print("1. Cliente existente")
+        print("2. Nuevo cliente")
+        
+        opcion = input("Seleccione (1-2): ").strip()
+        
+        if opcion == "1":
+            cliente = self.seleccionar_cliente()
         else:
-            print("1. Cliente existente")
-            print("2. Nuevo cliente")
-            
-            opcion = input("Seleccione (1-2): ").strip()
-            
-            if opcion == "1":
-                cliente = self.seleccionar_cliente()
-            else:
-                cliente = self.alta_cliente()
+            cliente = self.alta_cliente()
         
         if not cliente:
             print("No se pudo seleccionar cliente")
             return
         
+        # Obtener datos del turno
         print(f"\nTurno para: {cliente}")
         
-        # Pedir fecha
         fecha_str = input("Fecha (YYYY-MM-DD): ").strip()
         fecha = datetime.datetime.strptime(fecha_str, '%Y-%m-%d').date()
         
-        # Pedir hora
         hora_str = input("Hora (HH:MM): ").strip()
         hora = datetime.datetime.strptime(hora_str, '%H:%M').time()
         
-        # Combinar fecha y hora
         fecha_hora = datetime.datetime.combine(fecha, hora)
-        
-        # Pedir servicio
         servicio = input("Servicio: ").strip()
         
         # Crear turno
+        nuevo_id = self.obtener_proximo_id_turno()
         turno = Turno(
-            id_turno=self.proximo_id_turno,
+            id_turno=nuevo_id,
             cliente=cliente,
             servicio=servicio,
             fecha_hora=fecha_hora,
             estado="Pendiente"
         )
         
-        self.turnos.append(turno)
-        self.proximo_id_turno = self.proximo_id_turno + 1
+        # Leer todos los turnos actuales + agregar el nuevo + guardar todo
+        turnos = self.leer_todos_los_turnos()
+        turnos.append(turno)
+        self.guardar_todos_los_turnos(turnos)
         
-        self.guardar_datos()
         print(f"Turno creado: {turno}")
     
     def seleccionar_cliente(self):
-        if len(self.clientes) == 0:
+        turnos = self.leer_todos_los_turnos()
+        
+        if len(turnos) == 0:
+            print("No hay clientes")
             return None
+        
+        # Obtener clientes únicos
+        clientes_unicos = []
+        indice = 0
+        while indice < len(turnos):
+            cliente = turnos[indice].cliente
+            
+            # Verificar si ya está en la lista
+            ya_existe = False
+            j = 0
+            while j < len(clientes_unicos):
+                if clientes_unicos[j].id_cliente == cliente.id_cliente:
+                    ya_existe = True
+                    break
+                j = j + 1
+            
+            if not ya_existe:
+                clientes_unicos.append(cliente)
+            
+            indice = indice + 1
         
         print("\nClientes:")
         indice = 0
-        while indice < len(self.clientes):
+        while indice < len(clientes_unicos):
             numero = indice + 1
-            cliente = self.clientes[indice]
-            print(f"{numero}. {cliente}")
+            print(f"{numero}. {clientes_unicos[indice]}")
             indice = indice + 1
         
-        seleccion = input(f"Seleccione (1-{len(self.clientes)}): ").strip()
+        seleccion = input(f"Seleccione (1-{len(clientes_unicos)}): ").strip()
         numero = int(seleccion)
         indice = numero - 1
         
-        if 0 <= indice < len(self.clientes):
-            return self.clientes[indice]
+        if 0 <= indice < len(clientes_unicos):
+            return clientes_unicos[indice]
         return None
 
     def listar_turnos(self):
-        print("\n" + "="*50)
+        print("\n" + "="*40)
         print("LISTA DE TURNOS")
-        print("="*50)
+        print("="*40)
         
-        if len(self.turnos) == 0:
+        turnos = self.leer_todos_los_turnos()
+        
+        if len(turnos) == 0:
             print("No hay turnos")
             return
         
         indice = 0
-        while indice < len(self.turnos):
-            turno = self.turnos[indice]
-            print(f"{turno}")
+        while indice < len(turnos):
+            print(turnos[indice])
             indice = indice + 1
         
-        print(f"\nTotal: {len(self.turnos)} turnos")
-    
-    def encontrar_turno_por_id(self, id_turno):
-        indice = 0
-        while indice < len(self.turnos):
-            if self.turnos[indice].id_turno == id_turno:
-                return self.turnos[indice]
-            indice = indice + 1
-        return None
+        print(f"\nTotal: {len(turnos)} turnos")
     
     def modificar_turno(self):
-        print("\n" + "="*40)
+        print("\n" + "="*30)
         print("MODIFICAR TURNO")
-        print("="*40)
+        print("="*30)
         
-        if len(self.turnos) == 0:
+        turnos = self.leer_todos_los_turnos()
+        
+        if len(turnos) == 0:
             print("No hay turnos")
             return
         
         turno_id = int(input("ID del turno: ").strip())
-        turno = self.encontrar_turno_por_id(turno_id)
         
-        if not turno:
+        # Buscar turno
+        turno_encontrado = None
+        indice_turno = -1
+        indice = 0
+        while indice < len(turnos):
+            if turnos[indice].id_turno == turno_id:
+                turno_encontrado = turnos[indice]
+                indice_turno = indice
+                break
+            indice = indice + 1
+        
+        if not turno_encontrado:
             print("Turno no encontrado")
             return
         
-        print(f"Turno actual: {turno}")
+        print(f"Turno: {turno_encontrado}")
         
         print("\n1. Cambiar servicio")
         print("2. Cambiar estado")
@@ -309,58 +327,69 @@ class GestorTurnos:
         
         if opcion == "1":
             nuevo_servicio = input("Nuevo servicio: ").strip()
-            turno.servicio = nuevo_servicio
-            self.guardar_datos()
-            print("Servicio actualizado")
+            turnos[indice_turno].servicio = nuevo_servicio
             
         elif opcion == "2":
             print("Estados: Pendiente, Confirmado, Completado, Cancelado")
             nuevo_estado = input("Nuevo estado: ").strip()
-            turno.estado = nuevo_estado
-            self.guardar_datos()
-            print("Estado actualizado")
+            turnos[indice_turno].estado = nuevo_estado
+        
+        # Guardar todos los turnos actualizados
+        self.guardar_todos_los_turnos(turnos)
+        print("Turno actualizado")
     
     def cancelar_turno(self):
-        print("\n" + "="*40)
+        print("\n" + "="*30)
         print("CANCELAR TURNO")
-        print("="*40)
+        print("="*30)
         
-        if len(self.turnos) == 0:
+        turnos = self.leer_todos_los_turnos()
+        
+        if len(turnos) == 0:
             print("No hay turnos")
             return
         
         turno_id = int(input("ID del turno: ").strip())
-        turno = self.encontrar_turno_por_id(turno_id)
         
-        if not turno:
+        # Buscar turno
+        turno_encontrado = None
+        indice = 0
+        while indice < len(turnos):
+            if turnos[indice].id_turno == turno_id:
+                turno_encontrado = turnos[indice]
+                break
+            indice = indice + 1
+        
+        if not turno_encontrado:
             print("Turno no encontrado")
             return
         
-        print(f"Turno: {turno}")
-        
+        print(f"Turno: {turno_encontrado}")
         confirmacion = input("¿Cancelar? (s/n): ").strip().lower()
         
         if confirmacion == 's':
-            # Eliminar turno
-            nueva_lista = []
+            # Crear nueva lista sin este turno
+            turnos_nuevos = []
             indice = 0
-            while indice < len(self.turnos):
-                if self.turnos[indice].id_turno != turno_id:
-                    nueva_lista.append(self.turnos[indice])
+            while indice < len(turnos):
+                if turnos[indice].id_turno != turno_id:
+                    turnos_nuevos.append(turnos[indice])
                 indice = indice + 1
             
-            self.turnos = nueva_lista
-            self.guardar_datos()
+            # Guardar la nueva lista
+            self.guardar_todos_los_turnos(turnos_nuevos)
             print("Turno cancelado")
         else:
             print("No se canceló")
 
     def buscar_turnos(self):
-        print("\n" + "="*40)
+        print("\n" + "="*30)
         print("BUSCAR TURNOS")
-        print("="*40)
+        print("="*30)
         
-        if len(self.turnos) == 0:
+        turnos = self.leer_todos_los_turnos()
+        
+        if len(turnos) == 0:
             print("No hay turnos")
             return
         
@@ -377,9 +406,9 @@ class GestorTurnos:
             print(f"\nTurnos de {cliente}:")
             encontrados = 0
             indice = 0
-            while indice < len(self.turnos):
-                if self.turnos[indice].cliente.id_cliente == cliente.id_cliente:
-                    print(self.turnos[indice])
+            while indice < len(turnos):
+                if turnos[indice].cliente.id_cliente == cliente.id_cliente:
+                    print(turnos[indice])
                     encontrados = encontrados + 1
                 indice = indice + 1
             
@@ -393,9 +422,9 @@ class GestorTurnos:
             print(f"\nTurnos del {fecha}:")
             encontrados = 0
             indice = 0
-            while indice < len(self.turnos):
-                if self.turnos[indice].fecha_hora.date() == fecha:
-                    print(self.turnos[indice])
+            while indice < len(turnos):
+                if turnos[indice].fecha_hora.date() == fecha:
+                    print(turnos[indice])
                     encontrados = encontrados + 1
                 indice = indice + 1
             
@@ -404,16 +433,15 @@ class GestorTurnos:
     
     def menu_principal(self):
         while True:
-            print("\n" + "="*40)
-            print("GESTOR DE TURNOS")
-            print("="*40)
+            print("\n" + "="*30)
+            print("SISTEMA DE TURNOS")
+            print("="*30)
             print("1. Alta cliente")
             print("2. Solicitar turno")
             print("3. Lista turnos")
             print("4. Modificar turno")
             print("5. Cancelar turno")
             print("6. Buscar turnos")
-            print("7. Guardar")
             print("0. Salir")
             
             seleccion = input("\nOpción: ").strip()
@@ -430,22 +458,18 @@ class GestorTurnos:
                 self.cancelar_turno()
             elif seleccion == "6":
                 self.buscar_turnos()
-            elif seleccion == "7":
-                self.guardar_datos()
-                print("Datos guardados")
             elif seleccion == "0":
-                self.guardar_datos()
                 print("Sistema cerrado")
                 break
             else:
                 print("Opción inválida")
             
-            input("\nPresione Enter para continuar...")
+            input("\nPresione Enter...")
 
 
 def main():
-    print("Gestión de Turnos")
-    print("-" * 30)
+    print("Sistema de Turnos")
+    print("-" * 20)
     
     gestor = GestorTurnos()
     gestor.menu_principal()
